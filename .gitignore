@@ -1,0 +1,33 @@
+# Local environment
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+Thumbs.db
+
+# Editor and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output
+build/
+dist/
+out/
+target/
+zig-cache/
+.zig-cache/
+zig-out/
+
+# Local logs and artifacts
+*.log
+reports/local/
+benchmarks/results-local/
+
+# Credentials and keys
+*.pem
+*.key
+*.p12
+*.pfx

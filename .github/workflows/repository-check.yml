@@ -1,0 +1,67 @@
+name: repository-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Check required governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            README.md
+            CONTRIBUTING.md
+            SECURITY.md
+            .github/PULL_REQUEST_TEMPLATE.md
+            .github/ISSUE_TEMPLATE/config.yml
+          )
+          status=0
+          for file in "${required[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error file=$file::Required file is missing or empty"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Reject unresolved merge-conflict markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nE '^(<<<<<<< |>>>>>>> )' -- .; then
+            echo "::error::Unresolved merge-conflict marker found"
+            exit 1
+          fi
+
+      - name: Reject obvious credential patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nE '(ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' -- . ':!*.md'; then
+            echo "::error::Potential credential material found"
+            exit 1
+          fi
+          echo "No obvious credential patterns found."
+
+      - name: Report scope
+        run: |
+          echo "This check validates repository hygiene only."
+          echo "It does not build the browser, run product tests, or verify security properties."
